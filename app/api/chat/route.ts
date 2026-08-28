@@ -82,7 +82,14 @@ export async function POST(req: Request) {
       // no mande el suyo (sendStart: false).
       writer.write({ type: "start" });
 
+      // Varios chunks del top-K suelen pertenecer a la misma fuente (la
+      // misma ley o sesión partida en varias secciones); sin deduplicar acá
+      // se repite un pill por chunk en vez de uno por fuente citable.
+      const seenCitations = new Set<string>();
       for (const chunk of retrieved) {
+        if (seenCitations.has(chunk.citation)) continue;
+        seenCitations.add(chunk.citation);
+
         writer.write({
           type: "source-url",
           sourceId: chunk.id,
