@@ -1,0 +1,180 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #f6f9fc;
+  --foreground: #11161f;
+  --card: #fff;
+  --card-foreground: #11161f;
+  --popover: #fff;
+  --popover-foreground: #11161f;
+  --primary: #0766ee;
+  --primary-foreground: #fff;
+  --secondary: #ebeff5;
+  --secondary-foreground: #282e38;
+  --muted: #ebeff5;
+  --muted-foreground: #5d646f;
+  --accent: #7d7df9;
+  --accent-foreground: #fff;
+  --destructive: #e40014;
+  --destructive-foreground: #e40014;
+  --border: #dadee5;
+  --input: #e1e5eb;
+  --ring: #0766ee;
+
+  --camara-senado: #0079b6;
+  --camara-senado-muted: #d2ecff;
+  --camara-diputados: #ee7b00;
+  --camara-diputados-muted: #ffeadc;
+  --camara-asamble: #955be3;
+  --camara-asamble-muted: #e8dffc;
+
+  --estado-aprobado: #00809f;
+  --estado-aprobado-muted: #c8ebf7;
+  --estado-sancion: #006829;
+  --estado-sancion-muted: #cce6d0;
+
+  --success: #006829;
+  --success-muted: #cce6d0;
+  --info: #00809f;
+  --info-muted: #c8ebf7;
+  --warning: #ecca6c;
+  --warning-muted: #f6eed8;
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: #070b14;
+  --foreground: #ebeff5;
+  --card: #0c121a;
+  --card-foreground: #ebeff5;
+  --popover: #0c121a;
+  --popover-foreground: #ebeff5;
+  --primary: #2177ff;
+  --primary-foreground: #fff;
+  --secondary: #1c222b;
+  --secondary-foreground: #dadee5;
+  --muted: #1c222b;
+  --muted-foreground: #9da5b1;
+  --accent: #8c8fff;
+  --accent-foreground: #fff;
+  --destructive: #82181a;
+  --destructive-foreground: #fcf3f2;
+  --border: #232933;
+  --input: #1c222b;
+  --ring: #2177ff;
+
+  --camara-senado: #00a9fb;
+  --camara-senado-muted: #00243a;
+  --camara-diputados: #ffa564;
+  --camara-diputados-muted: #341a07;
+  --camara-asamble: #b27eff;
+  --camara-asamble-muted: #261a3a;
+
+  --estado-aprobado: #00a1c8;
+  --estado-aprobado-muted: #012e3a;
+  --estado-sancion: #00893c;
+  --estado-sancion-muted: #0d2814;
+
+  --success: #00893c;
+  --success-muted: #0d2814;
+  --info: #00a1c8;
+  --info-muted: #012e3a;
+  --warning: #f8dc90;
+  --warning-muted: #362d15;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-camara-senado: var(--camara-senado);
+  --color-camara-senado-muted: var(--camara-senado-muted);
+  --color-camara-diputados: var(--camara-diputados);
+  --color-camara-diputados-muted: var(--camara-diputados-muted);
+  --color-camara-asamble: var(--camara-asamble);
+  --color-camara-asamble-muted: var(--camara-asamble-muted);
+
+  --color-estado-aprobado: var(--estado-aprobado);
+  --color-estado-aprobado-muted: var(--estado-aprobado-muted);
+  --color-estado-sancion: var(--estado-sancion);
+  --color-estado-sancion-muted: var(--estado-sancion-muted);
+
+  --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
+  --color-info: var(--info);
+  --color-info-muted: var(--info-muted);
+  --color-warning: var(--warning);
+  --color-warning-muted: var(--warning-muted);
+
+  --font-sans: var(--font-dm-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), "SF Mono", "Fira Code", monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise-in {
+  animation: rise-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pulse-dot {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.dot-typing {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
