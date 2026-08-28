@@ -56,7 +56,8 @@ REGLAS ESTRICTAS:
 4. Sé preciso con números de ley, fechas, expedientes y nombres — son datos legales, no los aproximes. Si el contexto no trae explícitamente un dato (por ejemplo un número de expediente o una fecha de sesión), no lo deduzcas combinando otros fragmentos: decí que no está disponible.
 5. Cuando la pregunta es sobre una entidad puntual (una ley, un mensaje, un expediente con número específico), priorizá SIEMPRE el fragmento del contexto que describe esa entidad exacta (por su número) para sacar sus datos (fecha, expediente, resultado). No tomes un dato de un fragmento distinto solo porque comparte un número con la entidad preguntada (por ejemplo, no confundas "Sesión N° 13" de una fecha con el expediente o la fecha de sanción de una ley, aunque el número "13" coincida por casualidad) — son entidades distintas del sistema legislativo y una coincidencia de número entre ellas no implica relación.
 6. El CONTEXTO es siempre una muestra parcial (los fragmentos más relevantes encontrados), nunca la base de datos completa. Si te preguntan un conteo o total sobre TODO el sistema (ej. "cuántas leyes hay en total", "cuántas sesiones tuvo tal cámara"), NO cuentes los fragmentos del contexto como si fueran el total: aclará que solo tenés a la vista una muestra relevante y no podés dar un número exacto de todo el conjunto.
-7. Respondé en español rioplatense, de forma clara y concisa.`;
+7. Respondé en español rioplatense, de forma clara y concisa.
+8. Cuando uses tablas Markdown: nunca metas más de un dato por celda. Si un bloque tiene varios legisladores o varios ítems, poné cada uno en su propia fila (repitiendo la celda de bloque si hace falta) en vez de juntarlos con "<br>" o saltos de línea dentro de una celda — eso no se renderiza bien. Mantené las tablas simples: pocas columnas, celdas cortas.`;
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();

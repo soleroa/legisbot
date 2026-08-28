@@ -1,4 +1,5 @@
 import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const components: Components = {
   p: ({ children }) => (
@@ -44,12 +45,40 @@ const components: Components = {
       {children}
     </blockquote>
   ),
+  table: ({ children }) => (
+    <div className="mb-2 last:mb-0 max-w-full overflow-hidden rounded-lg border border-border">
+      <table className="w-full table-fixed border-collapse text-left text-[0.9em]">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="bg-muted/60">{children}</thead>
+  ),
+  tbody: ({ children }) => (
+    <tbody className="divide-y divide-border">{children}</tbody>
+  ),
+  tr: ({ children }) => (
+    <tr className="even:bg-muted/30">{children}</tr>
+  ),
+  th: ({ children }) => (
+    <th className="break-words px-3 py-1.5 font-semibold text-foreground">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="break-words px-3 py-1.5 align-top text-muted-foreground">
+      {children}
+    </td>
+  ),
 };
 
 export function MarkdownContent({ text }: { text: string }) {
   return (
     <div className="text-[15px] font-[family-name:var(--font-body)]">
-      <ReactMarkdown components={components}>{text}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {text}
+      </ReactMarkdown>
     </div>
   );
 }

@@ -8,9 +8,11 @@ import { EmptyState } from "./components/EmptyState";
 import { ChatMessage } from "./components/ChatMessage";
 import { TypingIndicator } from "./components/TypingIndicator";
 import { ChatInput } from "./components/ChatInput";
+import { ReportModal } from "./components/ReportModal";
 
 export default function Home() {
   const [input, setInput] = useState("");
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const { messages, sendMessage, status, stop } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
@@ -67,7 +69,8 @@ export default function Home() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
-      <Header />
+      <Header onOpenReport={() => setIsReportOpen(true)} />
+      <ReportModal open={isReportOpen} onClose={() => setIsReportOpen(false)} />
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden px-4 pt-14 md:pt-16">
         <div className="flex-1 overflow-y-auto">
