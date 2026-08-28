@@ -103,4 +103,6 @@ export interface Chunk {
   text: string;
   citation: string;
   metadata: Record<string, string>;
+  /** Fecha primaria del registro, ISO YYYY-MM-DD, o null si no aplica (p.ej. legisladores). */
+  date: string | null;
 }

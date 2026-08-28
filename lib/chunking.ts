@@ -46,6 +46,7 @@ function leyToChunk(ley: Ley): Chunk {
       origen: ley.origen,
       linkNorma: ley.linkNorma,
     },
+    date: ley.fechaPromulgacion || ley.fechaSancion || null,
   };
 }
 
@@ -80,6 +81,7 @@ function mensajeToChunk(msg: Mensaje): Chunk {
       estado: msg.estado,
       leyNumero: msg.leyNumero,
     },
+    date: msg.fechaIngreso || null,
   };
 }
 
@@ -109,6 +111,7 @@ function proyectoSesionToChunk(p: ProyectoSesion): Chunk {
       estado: p.estado,
       linkVideo: p.linkVideo,
     },
+    date: p.fecha || null,
   };
 }
 
@@ -136,6 +139,7 @@ function legisladorToChunk(l: Legislador, camaraLabel: string): Chunk {
       bloque: l.bloque,
       departamento: l.departamento,
     },
+    date: null,
   };
 }
 

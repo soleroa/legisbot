@@ -4,9 +4,35 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
   streamText,
+  type TextStreamPart,
+  type ToolSet,
   type UIMessage,
 } from "ai";
 import { formatContextForPrompt, retrieveContext } from "@/lib/rag";
+
+/**
+ * gpt-oss-120b a veces ignora la instrucción del prompt y usa corchetes
+ * unicode "fullwidth" (【1】) en vez de ASCII ([1]) para las citas — es
+ * inconsistente entre corridas, así que lo normalizamos acá en vez de
+ * depender solo del prompt. Seguro de aplicar delta a delta porque 【 y 】
+ * son cada uno un único code point: nunca quedan cortados a la mitad entre
+ * dos chunks del stream.
+ */
+function normalizeCitationBrackets<TOOLS extends ToolSet>() {
+  return () =>
+    new TransformStream<TextStreamPart<TOOLS>, TextStreamPart<TOOLS>>({
+      transform(part, controller) {
+        if (part.type === "text-delta") {
+          controller.enqueue({
+            ...part,
+            text: part.text.replace(/【/g, "[").replace(/】/g, "]"),
+          });
+        } else {
+          controller.enqueue(part);
+        }
+      },
+    });
+}
 
 export const maxDuration = 30;
 
@@ -19,8 +45,9 @@ REGLAS ESTRICTAS:
 1. Respondé únicamente con información presente en el CONTEXTO provisto. No inventes ni completes con conocimiento general sobre leyes o política argentina.
 2. SIEMPRE citá la fuente de cada afirmación usando exactamente el formato ASCII entre corchetes que aparece en el contexto (por ejemplo [1], con corchetes rectos normales "[" y "]", nunca corchetes angulares ni caracteres unicode decorativos) inmediatamente después de la afirmación correspondiente. Al final de la respuesta no hace falta repetir la lista de fuentes: ya se muestran aparte.
 3. Si el contexto no tiene información suficiente para responder la pregunta (o no es relevante), decilo explícitamente ("No encontré información suficiente en la base de datos del Monitor Legislativo para responder esto con precisión") en vez de adivinar o usar conocimiento externo.
-4. Sé preciso con números de ley, fechas, expedientes y nombres — son datos legales, no los aproximes.
-5. Respondé en español rioplatense, de forma clara y concisa.`;
+4. Sé preciso con números de ley, fechas, expedientes y nombres — son datos legales, no los aproximes. Si el contexto no trae explícitamente un dato (por ejemplo un número de expediente o una fecha de sesión), no lo deduzcas combinando otros fragmentos: decí que no está disponible.
+5. El CONTEXTO es siempre una muestra parcial (los fragmentos más relevantes encontrados), nunca la base de datos completa. Si te preguntan un conteo o total sobre TODO el sistema (ej. "cuántas leyes hay en total", "cuántas sesiones tuvo tal cámara"), NO cuentes los fragmentos del contexto como si fueran el total: aclará que solo tenés a la vista una muestra relevante y no podés dar un número exacto de todo el conjunto.
+6. Respondé en español rioplatense, de forma clara y concisa.`;
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
@@ -67,6 +94,7 @@ export async function POST(req: Request) {
             content: `CONTEXTO:\n${contextBlock}\n\nPREGUNTA: ${query}`,
           },
         ],
+        experimental_transform: normalizeCitationBrackets(),
       });
 
       writer.merge(result.toUIMessageStream({ sendStart: false }));

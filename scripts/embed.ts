@@ -60,6 +60,7 @@ async function main() {
           text: chunk.text,
           citation: chunk.citation,
           metadata: JSON.stringify(chunk.metadata),
+          date: chunk.date,
         },
         hash,
         embeddings[j]
