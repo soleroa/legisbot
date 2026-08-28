@@ -63,7 +63,7 @@ export function extractJsonParseLiterals(src: string): JsonLiteral[] {
     const jsStringLiteral = "'" + out.join("") + "'";
     let unescaped: string;
     try {
-      // eslint-disable-next-line no-eval -- unescaping our own downloaded JS string literal, not user input
+      // Unescaping our own downloaded JS string literal, not user input.
       unescaped = eval(jsStringLiteral);
     } catch {
       searchFrom = i + 1;

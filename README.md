@@ -67,13 +67,38 @@ npm run scrape   # scrapea el sitio -> data/scraped.json (~1-2 min, con rate lim
 npm run embed    # genera embeddings -> data/vectors.sqlite (descarga el modelo la primera vez, ~90MB)
 ```
 
-### Correr la app
+### Levantar el backend + frontend
+
+Este proyecto es un único server Next.js (App Router): no hay un backend
+separado que levantar aparte — `npm run dev` sirve tanto la UI (`app/page.tsx`)
+como el endpoint del chat (`app/api/chat/route.ts`, que hace el retrieval en
+SQLite y llama a Groq) en el mismo proceso, en el mismo puerto.
 
 ```bash
 npm run dev
 ```
 
-Abrí [http://localhost:3000](http://localhost:3000).
+Con eso ya tenés todo corriendo: abrí
+[http://localhost:3000](http://localhost:3000) para la UI, y el chat le pega
+internamente a `http://localhost:3000/api/chat` (podés probar ese endpoint
+suelto con `curl`, ver ejemplo abajo).
+
+Para producción: `npm run build && npm run start` (mismo esquema, un solo
+proceso sirviendo todo).
+
+<details>
+<summary>Probar el endpoint de chat directo, sin la UI (curl)</summary>
+
+```bash
+curl -N -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"id":"1","role":"user","parts":[{"type":"text","text":"¿Qué leyes se promulgaron últimamente?"}]}]}'
+```
+
+Devuelve un stream de eventos SSE: primero las fuentes citadas
+(`source-url`), después el texto de la respuesta token a token.
+
+</details>
 
 ## Actualizar los datos (refresh)
 

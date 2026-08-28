@@ -14,7 +14,7 @@ function getDb(): Database.Database {
   return db;
 }
 
-export interface RetrievedChunk extends SearchResult {}
+export type RetrievedChunk = SearchResult;
 
 export async function retrieveContext(
   query: string,
