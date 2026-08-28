@@ -70,10 +70,10 @@ export default function Home() {
       <Header />
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden px-4 pt-14 md:pt-16">
-        {displayMessages.length === 0 ? (
-          <EmptyState onPick={submit} />
-        ) : (
-          <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
+          {displayMessages.length === 0 ? (
+            <EmptyState onPick={submit} />
+          ) : (
             <div className="flex flex-col gap-5 py-6">
               {displayMessages.map((m) => (
                 <ChatMessage key={m.id} message={m} />
@@ -81,8 +81,8 @@ export default function Home() {
               {status === "submitted" && <TypingIndicator />}
               <div ref={bottomRef} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="shrink-0 bg-background/95 pb-4 pt-3 backdrop-blur-sm sm:pb-6">
           <ChatInput
@@ -93,7 +93,7 @@ export default function Home() {
             isStreaming={isStreaming}
             disabled={isStreaming}
           />
-          <p className="mt-2 text-center text-xs text-muted-foreground">
+          <p className="mt-1.5 text-center text-[11px] leading-snug text-muted-foreground sm:mt-2 sm:text-xs">
             Las respuestas se generan a partir de datos públicos de la Legislatura de Santa Fe y pueden contener errores.
           </p>
         </div>
