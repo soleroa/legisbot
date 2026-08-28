@@ -100,7 +100,17 @@ export interface Chunk {
   id: string;
   section: SourceSection;
   sourceId: string;
+  /** Texto completo que se muestra al LLM como contexto (incluye metadatos: decreto, expedientes, links). */
   text: string;
+  /**
+   * Versión corta y densa del contenido, usada SOLO para generar el
+   * embedding. Un chunk largo y heterogéneo (descripción + decreto +
+   * expedientes + links) diluye su similitud semántica real: un chunk de
+   * sesión que menciona el mismo hecho con menos "ruido" alrededor puede
+   * terminar pareciéndose más a la pregunta que el chunk de la propia ley.
+   * Si no se especifica, se usa `text` completo (comportamiento por defecto).
+   */
+  embeddingText?: string;
   citation: string;
   metadata: Record<string, string>;
   /** Fecha primaria del registro, ISO YYYY-MM-DD, o null si no aplica (p.ej. legisladores). */

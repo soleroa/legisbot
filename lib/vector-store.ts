@@ -101,6 +101,20 @@ export function openVectorStore(dbPath: string): Database.Database {
     );
   `);
 
+  // Búsqueda de texto completo (BM25) como señal complementaria a la
+  // semántica: un chunk en lenguaje jurídico formal ("DECLARA... ESTADO DE
+  // EMERGENCIA HÍDRICA") a veces rankea peor por similitud de embedding que
+  // otro chunk que repite las mismas palabras en un contexto distinto, pero
+  // FTS5 encuentra por coincidencia léxica directa independientemente de eso.
+  // Tabla independiente (no `content=chunks`) para no depender de que el
+  // rowid de `chunks` sea estable entre updates/deletes.
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+      id UNINDEXED,
+      text
+    );
+  `);
+
   return db;
 }
 
@@ -153,6 +167,9 @@ export function upsertChunk(
         float32ToBuffer(embedding)
       );
     }
+
+    db.prepare(`DELETE FROM chunks_fts WHERE id = ?`).run(chunk.id);
+    db.prepare(`INSERT INTO chunks_fts (id, text) VALUES (?, ?)`).run(chunk.id, chunk.text);
   });
   tx();
 }
@@ -178,6 +195,7 @@ export function deleteChunksNotIn(db: Database.Database, keepIds: string[]): num
     for (const row of toDelete) {
       db.prepare(`DELETE FROM chunk_vectors WHERE chunk_rowid = ?`).run(BigInt(row.rowid));
       db.prepare(`DELETE FROM chunks WHERE id = ?`).run(row.id);
+      db.prepare(`DELETE FROM chunks_fts WHERE id = ?`).run(row.id);
     }
   });
   tx();
@@ -196,7 +214,7 @@ type ChunkRow = {
   date: string | null;
 };
 
-function rowToResult(r: ChunkRow): SearchResult {
+function rowToResult(r: Omit<ChunkRow, "chunk_rowid">): SearchResult {
   return {
     id: r.id,
     section: r.section,
@@ -209,14 +227,66 @@ function rowToResult(r: ChunkRow): SearchResult {
   };
 }
 
+type LoadedRow = Omit<ChunkRow, "distance" | "chunk_rowid"> & { embedding: Float32Array };
+
+interface EmbeddingCache {
+  rowCount: number;
+  rows: LoadedRow[];
+}
+
+const embeddingCacheByDb = new WeakMap<Database.Database, EmbeddingCache>();
+
 /**
- * Búsqueda por similitud coseno. `maxDistance`, si se pasa, descarta los
- * resultados por debajo del umbral de relevancia: sqlite-vec siempre
- * devuelve los `topK` vecinos más cercanos aunque ninguno sea realmente
- * relevante para la pregunta, y pasarle ese "ruido" al LLM como si fuera
- * contexto válido es lo que lo lleva a inventar respuestas combinando
- * fragmentos sueltos. Con la distancia coseno de sqlite-vec (rango 0-2,
- * 0 = idéntico), un umbral ~0.9 corta los vecinos que ya no comparten tema.
+ * sqlite-vec 0.1.9 (todavía pre-1.0) devuelve resultados de similitud
+ * incorrectos/inconsistentes en esta instalación: tanto el índice KNN
+ * (`MATCH ... AND k = ?`) como el cálculo de distancia en un `ORDER BY`
+ * sobre toda la tabla dan números distintos entre sí y distintos al
+ * cálculo de una sola fila (que sí coincide con la distancia coseno
+ * calculada a mano) — confirmado comparando manualmente. Por eso el
+ * ranking real se hace acá en JS puro, no con el índice de la extensión.
+ * Es perfectamente viable en este volumen (unos pocos miles de filas,
+ * milisegundos) y elimina el bug de raíz en vez de trabajarlo alrededor.
+ */
+function loadAllEmbeddings(db: Database.Database): LoadedRow[] {
+  const rowCount = countChunks(db);
+  const cached = embeddingCacheByDb.get(db);
+  if (cached && cached.rowCount === rowCount) return cached.rows;
+
+  const rawRows = db
+    .prepare<[], Omit<ChunkRow, "distance" | "chunk_rowid"> & { embedding: Buffer }>(
+      `
+      SELECT c.id, c.section, c.source_id, c.text, c.citation, c.metadata, c.date, cv.embedding
+      FROM chunks c JOIN chunk_vectors cv ON cv.chunk_rowid = c.rowid
+      `
+    )
+    .all();
+
+  const rows: LoadedRow[] = rawRows.map((r) => ({
+    ...r,
+    embedding: new Float32Array(r.embedding.buffer, r.embedding.byteOffset, r.embedding.byteLength / 4),
+  }));
+
+  embeddingCacheByDb.set(db, { rowCount, rows });
+  return rows;
+}
+
+function cosineDistance(a: Float32Array, b: Float32Array): number {
+  // Los embeddings ya vienen normalizados (norma 1) desde @xenova/transformers
+  // con { normalize: true }, así que la distancia coseno es 1 - dot(a, b).
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  return 1 - dot;
+}
+
+/**
+ * Búsqueda por similitud coseno, calculada en JS. `maxDistance`, si se
+ * pasa, descarta los resultados por debajo del umbral de relevancia: sin
+ * este corte siempre se devuelven los `topK` vecinos más cercanos aunque
+ * ninguno sea realmente relevante para la pregunta, y pasarle ese "ruido"
+ * al LLM como si fuera contexto válido es lo que lo lleva a inventar
+ * respuestas combinando fragmentos sueltos. Rango de distancia: 0
+ * (idéntico) a 2 (opuesto); un umbral ~0.9 corta los vecinos que ya no
+ * comparten tema.
  */
 export function searchSimilar(
   db: Database.Database,
@@ -224,25 +294,16 @@ export function searchSimilar(
   topK: number,
   maxDistance?: number
 ): SearchResult[] {
-  const rows = db
-    .prepare<[Buffer, number], ChunkRow>(
-      `
-      SELECT
-        cv.chunk_rowid,
-        cv.distance,
-        c.id, c.section, c.source_id, c.text, c.citation, c.metadata, c.date
-      FROM chunk_vectors cv
-      JOIN chunks c ON c.rowid = cv.chunk_rowid
-      WHERE cv.embedding MATCH ? AND k = ?
-      ORDER BY cv.distance
-      `
-    )
-    .all(float32ToBuffer(queryEmbedding), topK);
+  const rows = loadAllEmbeddings(db);
+
+  const scored = rows
+    .map((r) => ({ ...r, distance: cosineDistance(queryEmbedding, r.embedding) }))
+    .sort((a, b) => a.distance - b.distance);
 
   const filtered =
-    maxDistance === undefined ? rows : rows.filter((r) => r.distance <= maxDistance);
+    maxDistance === undefined ? scored : scored.filter((r) => r.distance <= maxDistance);
 
-  return filtered.map(rowToResult);
+  return filtered.slice(0, topK).map(rowToResult);
 }
 
 /**
@@ -301,6 +362,60 @@ export function searchByExactNumber(
       `
     )
     .all(number, number, limit);
+
+  return rows.map(rowToResult);
+}
+
+/**
+ * Convierte una pregunta en lenguaje natural a una query FTS5 segura:
+ * separa en palabras (ignorando signos de puntuación que rompen la sintaxis
+ * de FTS5 como ?, ¿, comillas), descarta las muy cortas, y las une con OR
+ * entre comillas dobles para que cada palabra se busque literal.
+ */
+function toFtsQuery(text: string): string | null {
+  const words = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // saca tildes: FTS5 tokeniza sin acentos por defecto
+    .match(/[a-z0-9]+/g);
+  if (!words) return null;
+
+  const significant = words.filter((w) => w.length >= 4);
+  if (significant.length === 0) return null;
+
+  return significant.map((w) => `"${w}"`).join(" OR ");
+}
+
+/**
+ * Búsqueda de texto completo (BM25) sobre el contenido de los chunks.
+ * Complementa la búsqueda semántica: un chunk en lenguaje jurídico formal
+ * puede rankear peor por similitud de embedding que lo esperado, pero si
+ * comparte palabras clave literales con la pregunta ("emergencia",
+ * "hídrica"), FTS5 lo encuentra por coincidencia léxica directa.
+ */
+export function searchByFullText(
+  db: Database.Database,
+  query: string,
+  limit = 10
+): SearchResult[] {
+  const ftsQuery = toFtsQuery(query);
+  if (!ftsQuery) return [];
+
+  const rows = db
+    .prepare<[string, number], ChunkRow>(
+      `
+      SELECT
+        c.rowid as chunk_rowid,
+        0 as distance,
+        c.id, c.section, c.source_id, c.text, c.citation, c.metadata, c.date
+      FROM chunks_fts f
+      JOIN chunks c ON c.id = f.id
+      WHERE chunks_fts MATCH ?
+      ORDER BY bm25(chunks_fts)
+      LIMIT ?
+      `
+    )
+    .all(ftsQuery, limit);
 
   return rows.map(rowToResult);
 }

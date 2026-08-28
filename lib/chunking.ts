@@ -34,11 +34,17 @@ function leyToChunk(ley: Ley): Chunk {
     ley.linkNorma && `Texto completo de la norma: ${ley.linkNorma}`,
   ]);
 
+  // Solo el número y la descripción: los decretos/expedientes/links son
+  // ruido para el embedding (diluyen la similitud con preguntas sobre el
+  // contenido de la ley), aunque siguen presentes en `text` para el LLM.
+  const embeddingText = `Ley ${ley.numero}: ${ley.descripcion}`;
+
   return {
     id: `ley-${ley.id}`,
     section: "leyes",
     sourceId: ley.numero,
     text,
+    embeddingText,
     citation,
     metadata: {
       numero: ley.numero,
@@ -69,11 +75,14 @@ function mensajeToChunk(msg: Mensaje): Chunk {
     msg.expedienteDiputados && `Expediente Diputados N° ${msg.expedienteDiputados}.`,
   ]);
 
+  const embeddingText = `Mensaje del Poder Ejecutivo N° ${msg.numero}: ${msg.descripcion}`;
+
   return {
     id: `mensaje-${msg.id}`,
     section: "mensajes",
     sourceId: msg.numero,
     text,
+    embeddingText,
     citation,
     metadata: {
       numero: msg.numero,

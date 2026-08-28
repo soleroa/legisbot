@@ -6,6 +6,7 @@ import {
   openVectorStore,
   searchByDateRange,
   searchByExactNumber,
+  searchByFullText,
   searchSimilar,
   type SearchResult,
 } from "./vector-store";
@@ -61,12 +62,25 @@ export async function retrieveContext(
   const referencedNumbers = extractReferencedNumbers(query);
   const byNumber = referencedNumbers.flatMap((n) => searchByExactNumber(database, n));
 
+  // Búsqueda por palabras clave (BM25): un chunk en lenguaje jurídico
+  // formal puede rankear peor semánticamente de lo esperado; si comparte
+  // palabras literales con la pregunta, esto lo encuentra igual. Con la
+  // query construida en OR entre todas las palabras significativas, el
+  // documento más relevante puede no estar en el top-5 (hay muchos matches
+  // parciales de una sola palabra común, como "santa"), así que se pide un
+  // top-10 acá.
+  const byFullText = searchByFullText(database, query, 10);
+
+  // Se combinan en orden de prioridad (match exacto > fecha > palabras
+  // clave > semántico) y se corta al total pedido, para no inflar el
+  // prompt sin límite cuando varias señales aportan candidatos distintos.
   const merged = new Map<string, RetrievedChunk>();
   for (const chunk of byNumber) merged.set(chunk.id, chunk);
   for (const chunk of byDate) if (!merged.has(chunk.id)) merged.set(chunk.id, chunk);
+  for (const chunk of byFullText) if (!merged.has(chunk.id)) merged.set(chunk.id, chunk);
   for (const chunk of semantic) if (!merged.has(chunk.id)) merged.set(chunk.id, chunk);
 
-  return [...merged.values()];
+  return [...merged.values()].slice(0, topK);
 }
 
 /** Arma el bloque de contexto en texto plano para el prompt del LLM, numerado para poder citarlo. */
